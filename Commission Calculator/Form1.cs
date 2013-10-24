@@ -14,6 +14,8 @@ namespace Commission_Calculator
     public partial class MainWindow : Form
     {
 
+        public enum TextBoxType { Error, Price, Percent }
+
         public MainWindow()
         {
             InitializeComponent();
@@ -58,7 +60,7 @@ namespace Commission_Calculator
 
                 else
                 {
-                    var modifier = PriceOrPercent();
+                    var modifier = PriceOrPercent(); // a tuple containing the price per character or percent, and the type of textbox used or error
 
                     Action<Func<double, double, double, double>> writeFileHelper = inputFunction =>
                     {
@@ -67,11 +69,11 @@ namespace Commission_Calculator
 
                     switch (modifier.Item2)
                     {
-                        case "price": writeFileHelper((p, m, n) => p + m * n); break; // p is price, m is modifier, n is number of extra items
+                        case TextBoxType.Price: writeFileHelper((p, m, n) => p + m * n); break; // p is price, m is modifier, n is number of extra items
 
-                        case "percent": writeFileHelper((p, m, n) => ((n + 1) * p) - ((n + 1) * p) * (m / 100)); break;
+                        case TextBoxType.Percent: writeFileHelper((p, m, n) => ((n + 1) * p) - ((n + 1) * p) * (m / 100)); break;
 
-                        case "error": ErrorMessage("Input in numbers only!"); break;
+                        case TextBoxType.Error: ErrorMessage("Input in numbers only!"); break;
 
                         default: ErrorMessage("Something went horribly wrong, contact me on slench102@gmail.com"); break;// unreachable
                     }
@@ -79,26 +81,30 @@ namespace Commission_Calculator
             }
         }
 
-        private Tuple<double, string> PriceOrPercent()
+        /// <summary>
+        /// Generates a Tuple that contains a price value and a descriptive text
+        /// </summary>
+        /// <returns>A tuple that contains the type of operation as well as a value</returns>
+        private Tuple<double, TextBoxType> PriceOrPercent()
         {
-            Func<TextBox, string, Tuple<double, string>> generalFunction = (textBox, type) =>
+            Func<TextBox, TextBoxType, Tuple<double, TextBoxType>> generalFunction = (textBox, type) =>
             {
-                if (string.IsNullOrEmpty(textBox.Text))
-                    return new Tuple<double, string> (double.Parse(PriceBox.Text), "price");
+                if (string.IsNullOrEmpty(textBox.Text)) // if the given textbox is empty, assume to just use the price
+                    return new Tuple<double, TextBoxType>(double.Parse(PriceBox.Text), TextBoxType.Price);
 
-                double result;
-                if (double.TryParse(textBox.Text, out result))
-                    return new Tuple<double, string> (result, type.ToLower());
+                double result; // allocate space for the 'out' parameter below
+                if (double.TryParse(textBox.Text, out result)) // if the textbox does contain parsable text, return said text with the textbox's type
+                    return new Tuple<double, TextBoxType>(result, type);
 
                 // if neither of the above returns anything go here
-                return new Tuple<double, string>(0xDEAD, "error");
+                return new Tuple<double, TextBoxType>(0xDEAD, TextBoxType.Error);
             };
 
-            if (ExtraPriceBox.ReadOnly == false) 
-                return generalFunction(ExtraPriceBox, "Price");
+            if (ExtraPriceBox.ReadOnly == false) // if the ExtraPriceBox is editable, use it
+                return generalFunction(ExtraPriceBox, TextBoxType.Price);
 
-            else 
-                return generalFunction(PercentSavedBox, "Percent");
+            else // if not assume it to be the PercentSavedBox instead.
+                return generalFunction(PercentSavedBox, TextBoxType.Percent);
 
         }
 
